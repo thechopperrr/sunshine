@@ -1,9 +1,11 @@
 package com.example.android.sunshine.app;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -24,7 +26,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
+
 
 /**
  * A placeholder fragment containing a simple view.
@@ -47,22 +49,13 @@ public  class ForecastFragment extends Fragment {
 
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
         ListView listView = (ListView) rootView.findViewById(R.id.list_view_forecast);
-        ArrayList<String> weekForecast = new ArrayList<String>() {{
-            add("A");
-            add("B");
-            add("C");
-        }};
-
-
         arrayAdapter = new ArrayAdapter<String>(
                 //current context, fragments parrent activity
                 getActivity(),
                 //id of list item layout
                 R.layout.list_item_forecast,
                 //id of textview to sex
-                R.id.list_item_forecast_textview,
-                //forecast data
-                weekForecast);
+                R.id.list_item_forecast_textview);
         listView.setAdapter(arrayAdapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
             @Override
@@ -81,6 +74,11 @@ public  class ForecastFragment extends Fragment {
         return rootView;
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        update();
+    }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
@@ -91,14 +89,11 @@ public  class ForecastFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle item selection
+         final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
+        Log.v("item selected: ", Integer.toString(item.getItemId()));
         switch (item.getItemId()) {
             case R.id.action_refresh:
-                FetchWeatherTask fetchWeatherTask = new FetchWeatherTask();
-                fetchWeatherTask.execute("Varna,bg");
-                return true;
-            case  R.id.action_settings:
-                Intent intent = new Intent(getActivity(), SettingsActivity.class);
-                startActivity(intent);
+                update();
                 return true;
 
             default:
@@ -106,11 +101,16 @@ public  class ForecastFragment extends Fragment {
         }
     }
 
-
+    public void update(){
+        SharedPreferences shared =  PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String location = shared.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        FetchWeatherTask fetchWeatherTask = new FetchWeatherTask();
+        fetchWeatherTask.execute(location);
+    }
 
     public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
 
-        private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
+        public final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
 
         @Override
         protected String[] doInBackground(String... params) {
@@ -179,7 +179,7 @@ public  class ForecastFragment extends Fragment {
                 forecastJsonStr = buffer.toString();
                 Log.v(LOG_TAG, "Forecast json: " + forecastJsonStr);
                 Gist gist = new Gist();
-                return gist.getWeatherDataFromJson(forecastJsonStr, numDays);
+                return gist.getWeatherDataFromJson(forecastJsonStr, numDays, getActivity());
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error ", e);
                 // If the code didn't successfully get the weather data, there's no point in attemping

@@ -1,5 +1,8 @@
 package com.example.android.sunshine.app;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.text.format.Time;
 import android.util.Log;
 
@@ -27,8 +30,19 @@ public class Gist {
     /**
      * Prepare the weather high/lows for presentation.
      */
-    private String formatHighLows(double high, double low) {
+    private String formatHighLows(double high, double low, Context context) {
         // For presentation, assume the user doesn't care about tenths of a degree.
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+
+        String units = prefs.getString(context.getString(R.string.pref_units_key),context.getString(R.string.pref_units_metric) );
+
+        if(units.equals(context.getString(R.string.pref_units_imperial))){
+            high = (high*1.8) + 32;
+            low = (low*1.8) + 32;
+        } else if( ! units.equals(context.getString(R.string.pref_units_metric))){
+            Log.d("LOG_TAG", "units type not found: "+ units);
+        }
+
         long roundedHigh = Math.round(high);
         long roundedLow = Math.round(low);
 
@@ -43,7 +57,7 @@ public class Gist {
      * Fortunately parsing is easy:  constructor takes the JSON string and converts it
      * into an Object hierarchy for us.
      */
-    public String[] getWeatherDataFromJson(String forecastJsonStr, int numDays)
+    public String[] getWeatherDataFromJson(String forecastJsonStr, int numDays, Context context)
             throws JSONException {
 
         // These are the names of the JSON objects that need to be extracted.
@@ -102,7 +116,7 @@ public class Gist {
             double high = temperatureObject.getDouble(OWM_MAX);
             double low = temperatureObject.getDouble(OWM_MIN);
 
-            highAndLow = formatHighLows(high, low);
+            highAndLow = formatHighLows(high, low, context);
             resultStrs[i] = day + " - " + description + " - " + highAndLow;
         }
 
